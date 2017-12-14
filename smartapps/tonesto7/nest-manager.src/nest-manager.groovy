@@ -32,11 +32,12 @@ definition(
 {
 	appSetting "clientId"
 	appSetting "clientSecret"
+	appSetting "clientToken"
 	appSetting "devOpt"
 }
 
-def appVersion() { "5.2.1" }
-def appVerDate() { "10-15-2017" }
+def appVersion() { "5.2.0" }
+def appVerDate() { "8-12-2017" }
 def minVersions() {
 	return [
 		"automation":["val":517, "desc":"5.1.7"],
@@ -144,17 +145,12 @@ def authPage() {
 	def stateSz = getStateSizePerc()
 	if(!atomicState?.devHandlersTested) { deviceHandlerTest() }
 
-	if(!atomicState?.accessToken || !nestDevAccountCheckOk() || (!atomicState?.isInstalled && (!atomicState?.devHandlersTested || !preReqOk)) || (stateSz > 80)) {
+	if(!atomicState?.accessToken || (!atomicState?.isInstalled && (!atomicState?.devHandlersTested || !preReqOk)) || (stateSz > 80)) {
 		return dynamicPage(name: "authPage", title: "Status Page", nextPage: "", install: false, uninstall: false) {
 			section ("Status Page:") {
 				def desc = ""
-				def showWiki = false
 				if(!atomicState?.accessToken) {
 					desc = "OAuth is not Enabled for ${appName()} application.  Please click remove and review the installation directions again"
-				}
-				else if(!nestDevAccountCheckOk()) {
-					desc = "You are missing the Client ID and Secret.\n\nWe can no longer provide you with a built-in Nest Client ID and Secret.  Please check the Wiki for Detailed instructions on creating your own Nest Dev ID and Secret."
-					showWiki = true
 				}
 				else if(!atomicState?.devHandlersTested) {
 					desc = "Device Handlers are Missing or Not Published.  Please verify the installation instructions and device handlers are present before continuing."
@@ -170,9 +166,6 @@ def authPage() {
 				}
 				LogAction("Status Message: $desc", "warn", true)
 				paragraph "$desc", required: true, state: null
-				if(showWiki) {
-					href url: getWikiPageUrl(), style:"embedded", required:false, title:"View the Projects Wiki", description:"Tap to open in browser", state: "complete", image: getAppImg("web_icon.png")
-				}
 			}
 			devPageFooter("authErrLoadCnt", execTime)
 		}
@@ -206,7 +199,7 @@ def authPage() {
 			}
 			section(""){
 				paragraph "Tap 'Login to Nest' below to authorize SmartThings to your Nest Account.\n\nAfter login you will be taken to the 'Works with Nest' page. Read the info and if you 'Agree' press the 'Accept' button."
-				paragraph "â– FYI: Please use the parent Nest account, Nest Family member accounts will not work correctly", state: "complete"
+				paragraph "❖ FYI: Please use the parent Nest account, Nest Family member accounts will not work correctly", state: "complete"
 				href url: redirectUrl, style:"embedded", required: true, title: "Login to Nest", description: description
 			}
 			devPageFooter("authLoadCnt", execTime)
@@ -769,19 +762,19 @@ def getRestSrvcDesc() {
 		str += "${str == "" ? "" : "\n"}Host: (${rData?.hostInfo?.hostname})"
 		if(rData?.hostInfo?.osPlatform) {
 			def pd = parseJson(rData?.hostInfo?.osPlatform.toString())
-			str += "\n â”œ OS: ${pd?.dist} ${pd?.release}"
-			str += "\n â”‚â”œ Codename: ${pd?.codename}"
-			str += "\n â”‚â”” Kernel: ${pd?.os.toString().capitalize()} ${rData?.hostInfo?.osRelease}"
+			str += "\n ├ OS: ${pd?.dist} ${pd?.release}"
+			str += "\n │├ Codename: ${pd?.codename}"
+			str += "\n │└ Kernel: ${pd?.os.toString().capitalize()} ${rData?.hostInfo?.osRelease}"
 		} else {
-			str += "\n â”œ OS: ${rData?.hostInfo?.osType} ${rData?.hostInfo?.osRelease ? "(${rData?.hostInfo?.osRelease})": ""}"
+			str += "\n ├ OS: ${rData?.hostInfo?.osType} ${rData?.hostInfo?.osRelease ? "(${rData?.hostInfo?.osRelease})": ""}"
 		}
-		str += "\n â”œ Memory: ${rData?.hostInfo?.memTotal} (${rData?.hostInfo?.memFree} free)"
-		str += "\n â”œ IP: (${rData?.hostInfo?.ip})"
-		str += "\n â”œ Port: (${rData?.hostInfo?.port})"
-		str += "\n â”œ Node Service: (v${rData?.version})"
-		str += "\n â”œ Active Streaming: (${rData?.streaming.toString().capitalize()})"
-		str += "\n ${dtstr != "" ? "â”œ" : "â””"} Session Events: (${rData?.sessionEvts})"
-		str += dtstr != "" ? "\n â”” Uptime: ${dtstr.length() > 20 ? "\n     â”” ${dtstr}" : "${dtstr}"}" : ""
+		str += "\n ├ Memory: ${rData?.hostInfo?.memTotal} (${rData?.hostInfo?.memFree} free)"
+		str += "\n ├ IP: (${rData?.hostInfo?.ip})"
+		str += "\n ├ Port: (${rData?.hostInfo?.port})"
+		str += "\n ├ Node Service: (v${rData?.version})"
+		str += "\n ├ Active Streaming: (${rData?.streaming.toString().capitalize()})"
+		str += "\n ${dtstr != "" ? "├" : "└"} Session Events: (${rData?.sessionEvts})"
+		str += dtstr != "" ? "\n └ Uptime: ${dtstr.length() > 20 ? "\n     └ ${dtstr}" : "${dtstr}"}" : ""
 		paragraph title: "Running Service Info:", str, state: "complete"
 	}
 	return str
@@ -938,10 +931,10 @@ def automationsPage() {
 			section("Advanced Options: (Tap + to Show)                                                          ", hideable: true, hidden: true) {
 				def descStr = ""
 				descStr += (settings?.locDesiredCoolTemp || settings?.locDesiredHeatTemp) ? "Comfort Settings:" : ""
-				descStr += settings?.locDesiredHeatTemp ? "\n â€¢ Desired Heat Temp: (${settings?.locDesiredHeatTemp}Â°${getTemperatureScale()})" : ""
-				descStr += settings?.locDesiredCoolTemp ? "\n â€¢ Desired Cool Temp: (${settings?.locDesiredCoolTemp}Â°${getTemperatureScale()})" : ""
+				descStr += settings?.locDesiredHeatTemp ? "\n • Desired Heat Temp: (${settings?.locDesiredHeatTemp}°${getTemperatureScale()})" : ""
+				descStr += settings?.locDesiredCoolTemp ? "\n • Desired Cool Temp: (${settings?.locDesiredCoolTemp}°${getTemperatureScale()})" : ""
 				descStr += (settings?.locDesiredComfortDewpointMax) ? "${(settings?.locDesiredCoolTemp || settings?.locDesiredHeatTemp) ? "\n\n" : ""}Dew Point:" : ""
-				descStr += settings?.locDesiredComfortDewpointMax ? "\n â€¢ Max Dew Point: (${settings?.locDesiredComfortDewpointMax}${getTemperatureScale()})" : ""
+				descStr += settings?.locDesiredComfortDewpointMax ? "\n • Max Dew Point: (${settings?.locDesiredComfortDewpointMax}${getTemperatureScale()})" : ""
 				descStr += "${(settings?.locDesiredCoolTemp || settings?.locDesiredHeatTemp) ? "\n\n" : ""}${getSafetyValuesDesc()}" ?: ""
 				def prefDesc = (descStr != "") ? "${descStr}\n\nTap to modify" : "Tap to configure"
 				href "automationGlobalPrefsPage", title: "Global Automation Preferences", description: prefDesc, state: (descStr != "" ? "complete" : null), image: getAppImg("global_prefs_icon.png")
@@ -1048,16 +1041,16 @@ def automationStatisticsPage() {
 					def execAvgVal = data?.execAvgVal ?: null
 
 					def str = ""
-					str += lastModDt ? "â€¢ Last Modified:\n  â”” (${lastModDt})" : "\n â€¢ Last Modified: (Not Available)"
-					str += lastEvtDt ? "\n\nâ€¢ Last Event:" : ""
-					str += lastEvtDt ? "${(data?.lastEvent?.displayName.length() > 20) ? "\n  â”‚ Device:\n  â”‚â”” " : "\n  â”œ Device: "}${data?.lastEvent?.displayName}" : ""
-					str += lastEvtDt ? "\n  â”œ Type: (${strCapitalize(data?.lastEvent?.name)})" : ""
-					str += lastEvtDt ? "\n  â”œ Value: (${data?.lastEvent?.value}${data?.lastEvent?.unit ? "${data?.lastEvent?.unit}" : ""})" : ""
-					str += lastEvtDt ? "\n  â”” DateTime: (${lastEvtDt})" : "\n\n â€¢ Last Event: (Not Available)"
-					str += lastEvalDt ? "\n\nâ€¢ Last Evaluation:\n  â”” (${lastEvalDt})" : "\n\n â€¢ Last Evaluation: (Not Available)"
-					str += lastSchedDt ? "\n\nâ€¢ Last Schedule:\n  â”” (${lastSchedDt})" : "\n\n â€¢ Last Schedule: (Not Available)"
-					str += lastActionDt ? "\n\nâ€¢ Last Action:\n  â”œ DateTime: (${lastActionDt})\n  â”” Action: ${data?.lastActionData?.actionDesc}" : "\n\n â€¢ Last Action: (Not Available)"
-					str += lastExecVal ? "\n\nâ€¢ Execution Info:\n  ${execAvgVal ? "â”œ" : "â””"} Last Time: (${lastExecVal} ms)${execAvgVal ? "\n  â”” Avg. Time: (${execAvgVal} ms)" : ""}" : "\n\n â€¢ Execution Info: (Not Available)"
+					str += lastModDt ? "• Last Modified:\n  └ (${lastModDt})" : "\n • Last Modified: (Not Available)"
+					str += lastEvtDt ? "\n\n• Last Event:" : ""
+					str += lastEvtDt ? "${(data?.lastEvent?.displayName.length() > 20) ? "\n  │ Device:\n  │└ " : "\n  ├ Device: "}${data?.lastEvent?.displayName}" : ""
+					str += lastEvtDt ? "\n  ├ Type: (${strCapitalize(data?.lastEvent?.name)})" : ""
+					str += lastEvtDt ? "\n  ├ Value: (${data?.lastEvent?.value}${data?.lastEvent?.unit ? "${data?.lastEvent?.unit}" : ""})" : ""
+					str += lastEvtDt ? "\n  └ DateTime: (${lastEvtDt})" : "\n\n • Last Event: (Not Available)"
+					str += lastEvalDt ? "\n\n• Last Evaluation:\n  └ (${lastEvalDt})" : "\n\n • Last Evaluation: (Not Available)"
+					str += lastSchedDt ? "\n\n• Last Schedule:\n  └ (${lastSchedDt})" : "\n\n • Last Schedule: (Not Available)"
+					str += lastActionDt ? "\n\n• Last Action:\n  ├ DateTime: (${lastActionDt})\n  └ Action: ${data?.lastActionData?.actionDesc}" : "\n\n • Last Action: (Not Available)"
+					str += lastExecVal ? "\n\n• Execution Info:\n  ${execAvgVal ? "├" : "└"} Last Time: (${lastExecVal} ms)${execAvgVal ? "\n  └ Avg. Time: (${execAvgVal} ms)" : ""}" : "\n\n • Execution Info: (Not Available)"
 					paragraph "${str}", state: "complete"
 				}
 			}
@@ -1101,7 +1094,7 @@ def locDesiredClear() {
 }
 
 def getGlobTitleStr(typ) {
-	return "Desired Default ${typ} Temp (Â°${getTemperatureScale()})"
+	return "Desired Default ${typ} Temp (°${getTemperatureScale()})"
 }
 
 def automationGlobalPrefsPage() {
@@ -1119,8 +1112,8 @@ def automationGlobalPrefsPage() {
 						required: false, image: getAppImg("cool_icon.png")
 				def tRange = (getTemperatureScale() == "C") ? "15..19" : "60..66"
 				def wDev = getChildDevice(getNestWeatherId())
-				def curDewPnt = wDev ? "${wDev?.currentDewpoint}Â°${getTemperatureScale()}" : 0
-				input "locDesiredComfortDewpointMax", "decimal", title: "Default Dewpoint Threshold (${tRange} Â°${getTemperatureScale()})", required: false,  range: trange, submitOnChange: true,
+				def curDewPnt = wDev ? "${wDev?.currentDewpoint}°${getTemperatureScale()}" : 0
+				input "locDesiredComfortDewpointMax", "decimal", title: "Default Dewpoint Threshold (${tRange} °${getTemperatureScale()})", required: false,  range: trange, submitOnChange: true,
 						image: getAppImg("dewpoint_icon.png")
 				href url: "https://en.wikipedia.org/wiki/Dew_point#Relationship_to_human_comfort", style:"embedded", title: "What is Dew Point?",
 						description:"Tap to view", image: getAppImg("instruct_icon.png")
@@ -1151,15 +1144,15 @@ def automationGlobalPrefsPage() {
 
 						def str = ""
 						str += "Safety Values:"
-						str += safeTemp ? "\nâ€¢ Safety Temps:\n  â”” Min: ${safeTemp.min}Â°${getTemperatureScale()}/Max: ${safeTemp.max}Â°${getTemperatureScale()}" : "\nâ€¢ Safety Temps: (Not Set)"
-						str += dew_max ? "\nâ€¢ Comfort Max Dewpoint:\n  â”” Max: ${dew_max}Â°${getTemperatureScale()}" : "\nâ€¢ Comfort Max Dewpoint: (Not Set)"
+						str += safeTemp ? "\n• Safety Temps:\n  └ Min: ${safeTemp.min}°${getTemperatureScale()}/Max: ${safeTemp.max}°${getTemperatureScale()}" : "\n• Safety Temps: (Not Set)"
+						str += dew_max ? "\n• Comfort Max Dewpoint:\n  └ Max: ${dew_max}°${getTemperatureScale()}" : "\n• Comfort Max Dewpoint: (Not Set)"
 						paragraph "${str}", title:"${dev?.displayName}", state: "complete", image: getAppImg("instruct_icon.png")
 						if(canHeat) {
-							input "${dev?.deviceNetworkId}_safety_temp_min", "decimal", title: "Low Safety Temp Â°(${getTemperatureScale()})", description: "Range within ${tempRangeValues()}",
+							input "${dev?.deviceNetworkId}_safety_temp_min", "decimal", title: "Low Safety Temp °(${getTemperatureScale()})", description: "Range within ${tempRangeValues()}",
 									range: tempRangeValues(), submitOnChange: true, required: false, image: getAppImg("heat_icon.png")
 						}
 						if(canCool) {
-							input "${dev?.deviceNetworkId}_safety_temp_max", "decimal", title: "High Safety Temp Â°(${getTemperatureScale()})", description: "Range within ${tempRangeValues()}",
+							input "${dev?.deviceNetworkId}_safety_temp_max", "decimal", title: "High Safety Temp °(${getTemperatureScale()})", description: "Range within ${tempRangeValues()}",
 									range: tempRangeValues(), submitOnChange: true, required: false, image: getAppImg("cool_icon.png")
 						}
 						def tmin = settings?."${dev?.deviceNetworkId}_safety_temp_min"
@@ -1175,7 +1168,7 @@ def automationGlobalPrefsPage() {
 						atomicState?."${dev?.deviceNetworkId}_safety_temp_max" = tmax
 
 						def tRange = (getTemperatureScale() == "C") ? "15..19" : "60..66"
-						input "${dev?.deviceNetworkId}_comfort_dewpoint_max", "decimal", title: "Dewpoint Threshold (${tRange} Â°${getTemperatureScale()})", required: false, range: trange,
+						input "${dev?.deviceNetworkId}_comfort_dewpoint_max", "decimal", title: "Dewpoint Threshold (${tRange} °${getTemperatureScale()})", required: false, range: trange,
 									submitOnChange: true, image: getAppImg("dewpoint_icon.png")
 						// def hrange = "10..80"
 						// input "${dev?.deviceNetworkId}_comfort_humidity_max", "number", title: "Max. Humidity Desired (%)", description: "Range within ${hrange}", range: hrange,
@@ -1371,32 +1364,32 @@ def notifConfigPage(params) {
 
 def getAppNotifDesc() {
 	def str = ""
-	str += settings?.appApiIssuesMsg != false && settings?.appApiFailedCmdMsg != false ? "\nâ€¢ API CMD Failures: (${strCapitalize(settings?.appApiFailedCmdMsg ?: "True")})" : ""
-	str += settings?.appApiIssuesMsg != false && settings?.appApiRateLimitMsg != false ? "\nâ€¢ API Rate-Limiting: (${strCapitalize(settings?.appApiRateLimitMsg ?: "True")})" : ""
-	str += settings?.sendMissedPollMsg != false ? "\nâ€¢ Missed Poll Alerts: (${strCapitalize(settings?.sendMissedPollMsg ?: "True")})" : ""
-	str += settings?.appDbgDiagRemindMsg != false ? "\nâ€¢ Debug Log Reminder: (${strCapitalize(settings?.appDbgDiagRemindMsg ?: "True")})" : ""
-	str += settings?.sendAppUpdateMsg != false ? "\nâ€¢ Code Updates: (${strCapitalize(settings?.sendAppUpdateMsg ?: "True")})" : ""
+	str += settings?.appApiIssuesMsg != false && settings?.appApiFailedCmdMsg != false ? "\n• API CMD Failures: (${strCapitalize(settings?.appApiFailedCmdMsg ?: "True")})" : ""
+	str += settings?.appApiIssuesMsg != false && settings?.appApiRateLimitMsg != false ? "\n• API Rate-Limiting: (${strCapitalize(settings?.appApiRateLimitMsg ?: "True")})" : ""
+	str += settings?.sendMissedPollMsg != false ? "\n• Missed Poll Alerts: (${strCapitalize(settings?.sendMissedPollMsg ?: "True")})" : ""
+	str += settings?.appDbgDiagRemindMsg != false ? "\n• Debug Log Reminder: (${strCapitalize(settings?.appDbgDiagRemindMsg ?: "True")})" : ""
+	str += settings?.sendAppUpdateMsg != false ? "\n• Code Updates: (${strCapitalize(settings?.sendAppUpdateMsg ?: "True")})" : ""
 	return str != "" ? str : null
 }
 
 def getDevNotifDesc() {
 	def str = ""
-	str += settings?.devHealthNotifyMsg != false ? "\nâ€¢ Health Alerts: (${strCapitalize(settings?.devHealthNotifyMsg ?: "True")})" : ""
-	str += settings?.camStreamNotifMsg != false ? "\nâ€¢ Camera Stream Alerts: (${strCapitalize(settings?.camStreamNotifMsg ?: "True")})" : ""
-	str += settings?.weathAlertNotif != false ? "\nâ€¢ Weather Alerts: (${strCapitalize(settings?.weathAlertNotif ?: "True")})" : ""
+	str += settings?.devHealthNotifyMsg != false ? "\n• Health Alerts: (${strCapitalize(settings?.devHealthNotifyMsg ?: "True")})" : ""
+	str += settings?.camStreamNotifMsg != false ? "\n• Camera Stream Alerts: (${strCapitalize(settings?.camStreamNotifMsg ?: "True")})" : ""
+	str += settings?.weathAlertNotif != false ? "\n• Weather Alerts: (${strCapitalize(settings?.weathAlertNotif ?: "True")})" : ""
 	return str != "" ? str : null
 }
 
 def getAutoNotifDesc() {
 	def str = ""
-	str += settings?.watchDogNotifMissedEco ? "\nâ€¢ WatchDog Eco Alerts: (${strCapitalize(settings?.watchDogNotifMissedEco)})" : ""
+	str += settings?.watchDogNotifMissedEco ? "\n• WatchDog Eco Alerts: (${strCapitalize(settings?.watchDogNotifMissedEco)})" : ""
 	return str != "" ? str : null
 }
 
 def getAskAlexaDesc() {
 	def str = ""
-	str += settings?.allowAskAlexaMQ ? "\nâ€¢ Ask Alexa Msg Queue: (${strCapitalize(settings?.allowAskAlexaMQ)})" : ""
-	str += getAskAlexaMultiQueueEn() && atomicState?.askAlexaMQList ? "\nMultiple Queues Available:\nâ€¢ Queues: (${atomicState?.askAlexaMQList?.size()})" : ""
+	str += settings?.allowAskAlexaMQ ? "\n• Ask Alexa Msg Queue: (${strCapitalize(settings?.allowAskAlexaMQ)})" : ""
+	str += getAskAlexaMultiQueueEn() && atomicState?.askAlexaMQList ? "\nMultiple Queues Available:\n• Queues: (${atomicState?.askAlexaMQList?.size()})" : ""
 	return str != "" ? str : null
 }
 
@@ -1411,9 +1404,9 @@ def getAppNotifConfDesc() {
 		str += (settings?.usePush) ? "Sending via Push: (True)" : ""
 		str += (settings?.phone) ? "\nSending via SMS: (True)" : ""
 		str += (ap || de || au) ? "\nEnabled Alerts:" : ""
-		str += (ap) ? "\nâ€¢ App Alerts (True)" : ""
-		str += (de) ? "\nâ€¢ Device Alerts (True)" : ""
-		str += (au) ? "\nâ€¢ Automation Alerts (True)" : ""
+		str += (ap) ? "\n• App Alerts (True)" : ""
+		str += (de) ? "\n• Device Alerts (True)" : ""
+		str += (au) ? "\n• Automation Alerts (True)" : ""
 		str += (nd) ? "\n\nAlert Restrictions:\n${nd}" : ""
 	}
 	return str != "" ? str : null
@@ -1811,12 +1804,12 @@ def getSafetyValuesDesc() {
 			str += (ts && (minTemp || maxTemp || maxDew)) ? "${dev?.displayName}" : ""
 
 			str += (ts && (minTemp || maxTemp)) ? "\nSafety Values:" : ""
-			str += minTemp ? "\nâ€¢ Min. Temp: ${minTemp}Â°${getTemperatureScale()}" : ""
-			str += maxTemp ? "\nâ€¢ Max. Temp: ${maxTemp}Â°${getTemperatureScale()}" : ""
-			//str += maxHum ? "\nâ€¢ Max. Humidity: ${maxHum}%" : ""
+			str += minTemp ? "\n• Min. Temp: ${minTemp}°${getTemperatureScale()}" : ""
+			str += maxTemp ? "\n• Max. Temp: ${maxTemp}°${getTemperatureScale()}" : ""
+			//str += maxHum ? "\n• Max. Humidity: ${maxHum}%" : ""
 			//str += (ts && (minTemp || maxTemp) && (maxDew)) ? "\n" : ""
 			str += (ts && (maxDew)) ? "\nComfort Values:" : ""
-			str += maxDew ? "\nâ€¢ Max. Dewpnt: ${maxDew}Â°${getTemperatureScale()}" : ""
+			str += maxDew ? "\n• Max. Dewpnt: ${maxDew}°${getTemperatureScale()}" : ""
 			str += (str != "" && siz > ctr) ? "\n\n" : ""
 			ctr = (str != "") ? ctr += 1 : ctr
 			siz = (str == "") ? siz -= 1 : siz
@@ -1849,10 +1842,10 @@ def getVoiceRprtPrefDesc() {
 	def rPref = getVoiceRprtPrefs()
 	def str = ""
 	str += rPref?.vRprtSched || rPref?.vRprtZone || rPref?.vRprtUsage || rPref?.vRprtExtWeat ? "Included in Reports (If Available):" : ""
-	str += rPref?.vRprtZone ? "\nâ€¢ Zone Info" : ""
-	str += rPref?.vRprtSched ? "\nâ€¢ Automation Schedule" : ""
-	str += rPref?.vRprtExtWeat ? "\nâ€¢ External Weather" : ""
-	str += rPref?.vRprtUsage ? "\nâ€¢ HVAC Usage Info" : ""
+	str += rPref?.vRprtZone ? "\n• Zone Info" : ""
+	str += rPref?.vRprtSched ? "\n• Automation Schedule" : ""
+	str += rPref?.vRprtExtWeat ? "\n• External Weather" : ""
+	str += rPref?.vRprtUsage ? "\n• HVAC Usage Info" : ""
 	return str != "" ? str : null
 }
 
@@ -1865,10 +1858,10 @@ def getPollingConfDesc() {
 	def pStr = ""
 	pStr += rStrEn ? "Nest Stream: (${(settings.restStreaming && rStrEn) ? "${(!atomicState?.restStreamingOn) ? "Not Active" : "Active"}" : "Off"})" : ""
 	pStr += "\nPolling: (${!atomicState?.pollingOn ? "Not Active" : "Active"})"
-	pStr += "\nâ€¢ Device: (${getInputEnumLabel((!atomicState?.streamPolling ? (pollValue ?: 180) : 300), pollValEnum(true))}) ${pollValDesc}"
-	pStr += "\nâ€¢ Structure: (${getInputEnumLabel((!atomicState?.streamPolling ? (pollStrValue?:180) : 300), pollValEnum())}) ${pollStrValDesc}"
-	pStr += atomicState?.weatherDevice ? "\nâ€¢ Weather Polling: (${getInputEnumLabel(pollWeatherValue?:900, notifValEnum())})${pollWeatherValDesc}" : ""
-	pStr += "\nâ€¢ Forced Poll Refresh Limit:\n  â”” (${getInputEnumLabel(pollWaitVal ?: 10, waitValEnum())})${pollWaitValDesc}"
+	pStr += "\n• Device: (${getInputEnumLabel((!atomicState?.streamPolling ? (pollValue ?: 180) : 300), pollValEnum(true))}) ${pollValDesc}"
+	pStr += "\n• Structure: (${getInputEnumLabel((!atomicState?.streamPolling ? (pollStrValue?:180) : 300), pollValEnum())}) ${pollStrValDesc}"
+	pStr += atomicState?.weatherDevice ? "\n• Weather Polling: (${getInputEnumLabel(pollWeatherValue?:900, notifValEnum())})${pollWeatherValDesc}" : ""
+	pStr += "\n• Forced Poll Refresh Limit:\n  └ (${getInputEnumLabel(pollWaitVal ?: 10, waitValEnum())})${pollWaitValDesc}"
 	return (pStr != "" ? pStr : "")
 }
 
@@ -1885,11 +1878,11 @@ def getNotifSchedDesc() {
 	def notifDesc = ""
 	def getNotifTimeStartLbl = ( (startInput == "Sunrise" || startInput == "Sunset") ? ( (startInput == "Sunset") ? epochToTime(sun?.sunset.time) : epochToTime(sun?.sunrise.time) ) : (startTime ? time2Str(startTime) : "") )
 	def getNotifTimeStopLbl = ( (stopInput == "Sunrise" || stopInput == "Sunset") ? ( (stopInput == "Sunset") ? epochToTime(sun?.sunset.time) : epochToTime(sun?.sunrise.time) ) : (stopTime ? time2Str(stopTime) : "") )
-	notifDesc += (getNotifTimeStartLbl && getNotifTimeStopLbl) ? "â€¢ Silent Time: ${getNotifTimeStartLbl} - ${getNotifTimeStopLbl}" : ""
+	notifDesc += (getNotifTimeStartLbl && getNotifTimeStopLbl) ? "• Silent Time: ${getNotifTimeStartLbl} - ${getNotifTimeStopLbl}" : ""
 	def days = getInputToStringDesc(dayInput)
 	def modes = getInputToStringDesc(modeInput)
-	notifDesc += days ? "${(getNotifTimeStartLbl || getNotifTimeStopLbl) ? "\n" : ""}â€¢ Silent Day${isPluralString(dayInput)}: ${days}" : ""
-	notifDesc += modes ? "${(getNotifTimeStartLbl || getNotifTimeStopLbl || days) ? "\n" : ""}â€¢ Silent Mode${isPluralString(modeInput)}: ${modes}" : ""
+	notifDesc += days ? "${(getNotifTimeStartLbl || getNotifTimeStopLbl) ? "\n" : ""}• Silent Day${isPluralString(dayInput)}: ${days}" : ""
+	notifDesc += modes ? "${(getNotifTimeStartLbl || getNotifTimeStopLbl || days) ? "\n" : ""}• Silent Mode${isPluralString(modeInput)}: ${modes}" : ""
 	return (notifDesc != "") ? "${notifDesc}" : null
 }
 
@@ -1897,7 +1890,7 @@ def getNotifSchedDesc() {
 def getWeatherConfDesc() {
 	def str = ""
 	def defZip = getStZipCode() ? getStZipCode() : getNestZipCode()
-	str += "â€¢ Weather Location:\n   â”” ${getCustWeatherLoc() ? "Custom (${getCustWeatherLoc(true)})" : "Hub Location (${defZip})"}"
+	str += "• Weather Location:\n   └ ${getCustWeatherLoc() ? "Custom (${getCustWeatherLoc(true)})" : "Hub Location (${defZip})"}"
 	return (str != "") ? "${str}" : null
 }
 
@@ -1919,9 +1912,9 @@ def devCustomizePageDesc() {
 	def tempChgWaitValDesc = (!settings?.tempChgWaitVal || settings?.tempChgWaitVal == 4) ? "" : settings?.tempChgWaitVal
 	def wstr = settings?.weathAlertNotif ? "Enabled" : "Disabled"
 	def str = "Device Customizations:"
-	str += "\nâ€¢ Man. Temp Change Delay:\n   â”” (${getInputEnumLabel(settings?.tempChgWaitVal ?: 4, waitValEnum())})"
+	str += "\n• Man. Temp Change Delay:\n   └ (${getInputEnumLabel(settings?.tempChgWaitVal ?: 4, waitValEnum())})"
 	str += "\n${getWeatherConfDesc()}"
-	str += "\nâ€¢ Weather Alerts: (${wstr})"
+	str += "\n• Weather Alerts: (${wstr})"
 	return ((tempChgWaitValDesc || getCustWeatherLoc() || settings?.weathAlertNotif) ? str : "")
 }
 
@@ -1930,15 +1923,15 @@ def getDevicesDesc(startNewLine=true) {
 	def vDev = atomicState?.vThermostats || settings?.presDevice || settings?.weatherDevice
 	def str = ""
 	str += pDev ? "${startNewLine ? "\n" : ""}Physical Devices:" : ""
-	str += settings?.thermostats ? "\n â€¢ [${settings?.thermostats?.size()}] Thermostat${(settings?.thermostats?.size() > 1) ? "s" : ""}" : ""
-	str += settings?.protects ? "\n â€¢ [${settings?.protects?.size()}] Protect${(settings?.protects?.size() > 1) ? "s" : ""}" : ""
-	str += settings?.cameras ? "\n â€¢ [${settings?.cameras?.size()}] Camera${(settings?.cameras?.size() > 1) ? "s" : ""}" : ""
+	str += settings?.thermostats ? "\n • [${settings?.thermostats?.size()}] Thermostat${(settings?.thermostats?.size() > 1) ? "s" : ""}" : ""
+	str += settings?.protects ? "\n • [${settings?.protects?.size()}] Protect${(settings?.protects?.size() > 1) ? "s" : ""}" : ""
+	str += settings?.cameras ? "\n • [${settings?.cameras?.size()}] Camera${(settings?.cameras?.size() > 1) ? "s" : ""}" : ""
 
 	str += vDev ? "${pDev ? "\n" : ""}\nVirtual Devices:" : ""
-	str += atomicState?.vThermostats ? "\n â€¢ [${atomicState?.vThermostats?.size()}] Virtual Thermostat${(atomicState?.vThermostats?.size() > 1) ? "s" : ""}" : ""
-	str += settings?.presDevice ? "\n â€¢ [1] Presence Device" : ""
-	str += settings?.weatherDevice ? "\n â€¢ [1] Weather Device" : ""
-	str += (!settings?.thermostats && !settings?.protects && !settings?.cameras && !settings?.presDevice && !settings?.weatherDevice) ? "\n â€¢ No Devices Selected" : ""
+	str += atomicState?.vThermostats ? "\n • [${atomicState?.vThermostats?.size()}] Virtual Thermostat${(atomicState?.vThermostats?.size() > 1) ? "s" : ""}" : ""
+	str += settings?.presDevice ? "\n • [1] Presence Device" : ""
+	str += settings?.weatherDevice ? "\n • [1] Weather Device" : ""
+	str += (!settings?.thermostats && !settings?.protects && !settings?.cameras && !settings?.presDevice && !settings?.weatherDevice) ? "\n • No Devices Selected" : ""
 	return (str != "") ? str : null
 }
 
@@ -1972,8 +1965,8 @@ def nestLoginPrefPage () {
 			if(getTimeZone()) { tf.setTimeZone(getTimeZone()) }
 			atomicState.authTokenCreatedDt = atomicState?.authTokenCreatedDt ?: getDtNow()
 			section() {
-				paragraph title: "Authorization Info:", "Authorization Date:\nâ€¢ ${tf?.format(Date.parse("E MMM dd HH:mm:ss z yyyy", atomicState?.authTokenCreatedDt))}", state: "complete"
-				paragraph "Last Nest Connection:\nâ€¢ ${tf?.format(Date.parse("E MMM dd HH:mm:ss z yyyy", atomicState.lastDevDataUpd))}"
+				paragraph title: "Authorization Info:", "Authorization Date:\n• ${tf?.format(Date.parse("E MMM dd HH:mm:ss z yyyy", atomicState?.authTokenCreatedDt))}", state: "complete"
+				paragraph "Last Nest Connection:\n• ${tf?.format(Date.parse("E MMM dd HH:mm:ss z yyyy", atomicState.lastDevDataUpd))}"
 			}
 			section("Revoke Authorization Reset:") {
 				href "nestTokenResetPage", title: "Log Out and Reset Nest Token", description: "Tap to Reset Nest Token", required: true, state: null, image: getAppImg("reset_icon.png")
@@ -2921,18 +2914,18 @@ def getInstAutoTypesDesc() {
 
 	def str = ""
 	str += (dat?.watchDog > 0 || dat?.nestMode > 0 || dat?.schMot || dat?.disabled > 0) ? "Installed Automations:" : ""
-	str += (dat?.watchDog > 0) ? "\nâ€¢ Watchdog (Active)" : ""
-	str += (dat?.remDiag > 0) ? "\nâ€¢ Diagnostic (Active)" : ""
-	str += (dat?.nestMode > 0) ? ((dat?.nestMode > 1) ? "\nâ€¢ Nest Home/Away (${dat?.nestMode})" : "\nâ€¢ Nest Home/Away (Active)") : ""
+	str += (dat?.watchDog > 0) ? "\n• Watchdog (Active)" : ""
+	str += (dat?.remDiag > 0) ? "\n• Diagnostic (Active)" : ""
+	str += (dat?.nestMode > 0) ? ((dat?.nestMode > 1) ? "\n• Nest Home/Away (${dat?.nestMode})" : "\n• Nest Home/Away (Active)") : ""
 	def sch = dat?.schMot.findAll { it?.value > 0}
-	str += (sch?.size()) ? "\nâ€¢ Thermostat (${sch?.size()})" : ""
+	str += (sch?.size()) ? "\n• Thermostat (${sch?.size()})" : ""
 	def scii = 1
 	def newList = schMotItems?.unique()
 	newList?.sort()?.each { sci ->
-		str += "${scii == newList?.size() ? "\n  â””" : "\n  â”œ"} $sci"
+		str += "${scii == newList?.size() ? "\n  └" : "\n  ├"} $sci"
 		scii = scii+1
 	}
-	str += (disItems?.size() > 0) ? "\nâ€¢ Disabled: (${disItems?.size()})" : ""
+	str += (disItems?.size() > 0) ? "\n• Disabled: (${disItems?.size()})" : ""
 	return (str != "") ? str : null
 }
 
@@ -4485,7 +4478,7 @@ def setNeedChildUpdate() {
 }
 
 def tUnitStr() {
-	return "Â°${getTemperatureScale()}"
+	return "°${getTemperatureScale()}"
 }
 
 def setDeviceLabel(devId, labelStr) {
@@ -5052,7 +5045,7 @@ void schedNextWorkQ(childId, useShort=false) {
 			timeVal = (60 - getLastCmdSentSeconds(qnum) + getChildWaitVal())
 		}
 		def str = timeVal > cmdDelay ? "*RATE LIMITING ON* " : ""
-		LogAction("schedNextWorkQ â”‚ ${str}queue: ${qnum} â”‚ schedTime: ${timeVal} â”‚ recentSendCmd: ${getRecentSendCmd(qnum)} â”‚ last seconds: ${getLastCmdSentSeconds(qnum)} â”‚ cmdDelay: ${cmdDelay} â”‚ allowAsync: ${allowAsync}", "info", true)
+		LogAction("schedNextWorkQ │ ${str}queue: ${qnum} │ schedTime: ${timeVal} │ recentSendCmd: ${getRecentSendCmd(qnum)} │ last seconds: ${getLastCmdSentSeconds(qnum)} │ cmdDelay: ${cmdDelay} │ allowAsync: ${allowAsync}", "info", true)
 	}
 	if(timeVal != 0) {
 		runIn(timeVal, "workQueue", [overwrite: true])
@@ -5129,7 +5122,7 @@ void workQueue() {
 
 	try {
 		if(cmdQueue?.size() > 0) {
-			LogAction("workQueue â”‚ Run Queue: ${qnum} | ($metstr)", "trace", true)
+			LogAction("workQueue │ Run Queue: ${qnum} | ($metstr)", "trace", true)
 			runIn(60, "workQueue", [overwrite: true])  // lost schedule catchall
 
 			if(!cmdIsProc()) {
@@ -5890,9 +5883,7 @@ def webResponse(resp, data) {
 		if(atomicState?.appData && !appDevType() && atomicState?.clientBlacklisted) {
 			appUpdateNotify()
 		}
-		if(atomicState?.appData?.appSettings?.pullFromFB == true) {
-			getFbAppSettings(data?.type == "async" ? false : true )
-		}
+		getFbAppSettings(data?.type == "async" ? false : true )
 		atomicState?.lastWebUpdDt = getDtNow()
 		result = true
 	} else {
@@ -7011,7 +7002,7 @@ def callback() {
 				if(atomicState?.authToken) {
 					atomicState?.authTokenCreatedDt = getDtNow()
 					atomicState.authTokenExpires = resp?.data.expires_in
-					// atomicState.authTokenNum = clientToken()
+					atomicState.authTokenNum = clientToken()
 					atomicState.oauthInitState = UUID?.randomUUID().toString()
 				}
 			}
@@ -7201,26 +7192,33 @@ def toQueryString(Map m) {
 }
 
 def clientId() {
-	if(appSettings?.clientId) {
-		return appSettings?.clientId
+	if(appSettings.clientId) {
+		return appSettings.clientId
 	} else {
-		LogAction("clientId is missing and is required to generate your Nest Auth token.  Please verify you are running the latest software version", "error", true)
-		return null
+		if(atomicState?.appData?.token?.id) {
+			return atomicState?.appData?.token?.id
+		} else { LogAction("clientId is missing and is required to generate your Nest Auth token.  Please verify you are running the latest software version", "error", true) }
 	}
 }
 
 def clientSecret() {
-	if(appSettings?.clientSecret) {
-		return appSettings?.clientSecret
+	if(appSettings.clientSecret) {
+		return appSettings.clientSecret
 	} else {
-		LogAction("clientSecret is missing and is required to generate your Nest Auth token.  Please verify you are running the latest software version", "error", true)
-		return null
+		if(atomicState?.appData?.token?.secret) {
+			return atomicState?.appData?.token?.secret
+		} else { LogAction("clientSecret is missing and is required to generate your Nest Auth token.  Please verify you are running the latest software version", "error", true) }
 	}
 }
 
-def nestDevAccountCheckOk() {
-	if(atomicState?.authToken == null && (clientId() == null || clientSecret() == null) ) { return false }
-	else { return true }
+def clientToken() {
+	if(appSettings.clientToken) {
+		return appSettings.clientToken
+	} else {
+		if(atomicState?.appData?.token?.tokenNum) {
+			return atomicState?.appData?.token?.tokenNum
+		} else { LogAction("clientToken is missing and is required to generate your Nest Auth token.  Please verify you are running the latest software version", "error", true) }
+	}
 }
 
 /************************************************************************************************
@@ -8415,9 +8413,9 @@ def dumpListDesc(data, level, List lastLevel, listLabel, html=false) {
 		} else {
 			def lineStrt = "\n"
 			for(int i=0; i < level; i++) {
-				lineStrt += (i+1 < level) ? (!lastLevel[i] ? "   â”‚" : "    " ) : "   "
+				lineStrt += (i+1 < level) ? (!lastLevel[i] ? "   │" : "    " ) : "   "
 			}
-			lineStrt += (cnt == 1 && list1.size() > 1) ? "â”Œâ”€â”€ " : (cnt < list1?.size() ? "â”œâ”€â”€ " : "â””â”€â”€ ")
+			lineStrt += (cnt == 1 && list1.size() > 1) ? "┌── " : (cnt < list1?.size() ? "├── " : "└── ")
 			str += "${lineStrt}${listLabel}[${t0}]: ${par} (${getObjType(par)})"
 		}
 		cnt = cnt+1
@@ -8437,14 +8435,14 @@ def dumpMapDesc(data, level, List lastLevel, listCall=false, html=false) {
 		}
 		def theLast = thisIsLast
 		if(level == 0) {
-			lineStrt = "\n\n â€¢ "
+			lineStrt = "\n\n • "
 		} else {
 			theLast == (last && thisIsLast) ? true : false
 			lineStrt = "\n"
 			for(int i=0; i < level; i++) {
-				lineStrt += (i+1 < level) ? (!newLevel[i] ? "   â”‚" : "    " ) : "   "
+				lineStrt += (i+1 < level) ? (!newLevel[i] ? "   │" : "    " ) : "   "
 			}
-			lineStrt += ((cnt < data?.size() || listCall) && !thisIsLast) ? "â”œâ”€â”€ " : "â””â”€â”€ "
+			lineStrt += ((cnt < data?.size() || listCall) && !thisIsLast) ? "├── " : "└── "
 		}
 		if(par?.value instanceof Map) {
 			str += "${lineStrt}${par?.key.toString()}: (Map)"
@@ -8475,7 +8473,7 @@ def mapDescValHtmlCls(value) {
 	if(!value) { return "" }
 }
 
-def preSymObj() { [1:"â€¢", 2:"â”‚", 3:"â”œ", 4:"â””", 5:"    ", 6:"â”Œ", 7:"â”œâ”€â”€", 8:"â””â”€â”€ "] }
+def preSymObj() { [1:"•", 2:"│", 3:"├", 4:"└", 5:"    ", 6:"┌", 7:"├──", 8:"└── "] }
 
 def getMapDescStr(data) {
 	def str = ""
@@ -8844,13 +8842,13 @@ def renderDeviceData() {
 			def attrDesc = ""; def cnt = 1
 			def devData = dev?.supportedAttributes.collect { it as String }
 			devData?.sort().each {
-				attrDesc += "${cnt>1 ? "\n\n" : "\n"} â€¢ ${"$it" as String}: (${dev.currentValue("$it")})"
+				attrDesc += "${cnt>1 ? "\n\n" : "\n"} • ${"$it" as String}: (${dev.currentValue("$it")})"
 				cnt = cnt+1
 			}
 
 			def commDesc = ""; cnt = 1
 			dev?.supportedCommands?.sort()?.each { cmd ->
-				commDesc += "${cnt>1 ? "\n\n" : "\n"} â€¢ ${cmd.name}(${!cmd?.arguments ? "" : cmd?.arguments.toString().toLowerCase().replaceAll("\\[|\\]", "")})"
+				commDesc += "${cnt>1 ? "\n\n" : "\n"} • ${cmd.name}(${!cmd?.arguments ? "" : cmd?.arguments.toString().toLowerCase().replaceAll("\\[|\\]", "")})"
 				cnt = cnt+1
 			}
 
@@ -9122,14 +9120,14 @@ def sendInstallSlackNotif(inst=true) {
 		typeStr = "Client Updated"
 	}
 	str += "${typeStr}:"
-	str += "\n â€¢ DateTime: ${getDtNow()} TimeZone: ${getTimeZone()?.ID?.toString()}"
-	str += "\n â€¢ App Version: v${appVersion()}"
-	str += "\n â€¢ Mobile Client: ${cltType}"
-	str += atomicState?.authToken && atomicState?.authTokenNum ? "\n â€¢ TokenNum: ${atomicState?.authTokenNum}" : ""
-	str += atomicState?.authToken && atomicState?.authTokenCreatedDt ? "\n â€¢ TokenCreated: ${atomicState?.authTokenCreatedDt}" : ""
+	str += "\n • DateTime: ${getDtNow()} TimeZone: ${getTimeZone()?.ID?.toString()}"
+	str += "\n • App Version: v${appVersion()}"
+	str += "\n • Mobile Client: ${cltType}"
+	str += atomicState?.authToken && atomicState?.authTokenNum ? "\n • TokenNum: ${atomicState?.authTokenNum}" : ""
+	str += atomicState?.authToken && atomicState?.authTokenCreatedDt ? "\n • TokenCreated: ${atomicState?.authTokenCreatedDt}" : ""
 	def tf = new SimpleDateFormat("M/d/yyyy - h:mm a")
 	if(getTimeZone()) { tf.setTimeZone(getTimeZone()) }
-	str += atomicState?.authToken && atomicState?.authTokenExpires ? "\n â€¢ TokenExpires: ${tf?.format(atomicState?.authTokenExpires)}" : ""
+	str += atomicState?.authToken && atomicState?.authTokenExpires ? "\n • TokenExpires: ${tf?.format(atomicState?.authTokenExpires)}" : ""
 	def res = [:]
 	res << ["username":"New User Notification"]
 	res << ["icon_emoji":":spock-hand:"]
@@ -9748,10 +9746,10 @@ def getActiveScheduleState() {
 }
 
 def okSym() {
-	return "âœ“"// â˜‘"
+	return "✓"// ☑"
 }
 def notOkSym() {
-	return "âœ˜"
+	return "✘"
 }
 
 def getRemSenTempSrc() {
@@ -9972,8 +9970,8 @@ def appInfoDesc()	{
 	def beta = betaMarker() ? " Beta" : ""
 	def str = ""
 	str += "${appName()}"
-	str += isAppUpdateAvail() ? "\nâ€¢ ${textVersion()} (Latest: v${cur})${beta}" : "\nâ€¢ ${textVersion()}${beta}"
-	str += "\nâ€¢ ${textModified()}"
+	str += isAppUpdateAvail() ? "\n• ${textVersion()} (Latest: v${cur})${beta}" : "\n• ${textVersion()}${beta}"
+	str += "\n• ${textModified()}"
 	return str
 }
 def textVersion()	{ return "Version: ${appVersion()}" }
@@ -9984,5 +9982,5 @@ def appVerInfo()	{ return getWebData([uri: "https://raw.githubusercontent.com/${
 def textLicense()	{ return getWebData([uri: "https://raw.githubusercontent.com/${gitPath()}/app_license.txt", contentType: "text/plain; charset=UTF-8"], "license") }
 def textDonateLink()	{ return "https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=2CJEVN439EAWS" }
 def stIdeLink()		{ return "https://graph.api.smartthings.com" }
-def textCopyright()	{ return "CopyrightÂ© 2017 - Anthony S." }
+def textCopyright()	{ return "Copyright© 2017 - Anthony S." }
 def textDesc()		{ return "This SmartApp is used to integrate your Nest devices with SmartThings and to enable built-in automations" }
